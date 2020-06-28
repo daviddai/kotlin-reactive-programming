@@ -1,7 +1,13 @@
 import io.reactivex.Observable
+import io.reactivex.Observer
+import io.reactivex.disposables.Disposable
 import io.reactivex.functions.BiFunction
+import io.reactivex.rxkotlin.toObservable
 import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.Subject
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import java.util.concurrent.TimeUnit
 
 fun main() {
     println("=== Print element by call fun that returns an Observable ===")
@@ -24,6 +30,35 @@ fun main() {
     val subject = getSubjectWithEvenOddCheck()
     subject.onNext(10)
     subject.onNext(11)
+
+    println("=== Fib Sequence for first 7 numbers ===")
+    printFibSequence(7)
+
+    val observer: Observer<Any> = object : Observer<Any> {
+
+        override fun onSubscribe(d: Disposable) {
+            println("Subscribed to $d")
+        }
+
+        override fun onNext(t: Any) {
+            println("Next $t")
+        }
+
+        override fun onError(e: Throwable) {
+            println("Error occurred: $e")
+        }
+
+        override fun onComplete() {
+            println("All completed")
+        }
+    }
+
+    println("==== Test Observer and Observable ===")
+    val data = listOf(1, 2, 3, 4)
+    data.toObservable().subscribe(observer)
+
+    println("=====================================")
+    observerStopsAt(10)
 }
 
 fun getObservableFromList(list: List<String>) = Observable.create<String> { emitter ->
@@ -57,3 +92,56 @@ fun getSubjectWithEvenOddCheck(): Subject<Int> {
 }
 
 fun isEven(number: Int) = number % 2 == 0
+
+fun printFibSequence(number: Int) {
+    val sequence = sequence {
+        var a = 0
+        var b = 1
+
+        yield(a)
+        yield(b)
+
+        while (true) {
+            val c = a + b
+            yield(c)
+            a = b
+            b = c
+        }
+
+    }
+
+    println(sequence.take(number).toList())
+}
+
+fun observerStopsAt(second: Int) {
+    runBlocking {
+        val observable: Observable<Long> = Observable.interval(1, TimeUnit.SECONDS)
+        val observer: Observer<Long> = object : Observer<Long> {
+            lateinit var disposable: Disposable
+
+            override fun onComplete() {
+                println("All completed")
+            }
+
+            override fun onSubscribe(d: Disposable) {
+                disposable = d
+            }
+
+            override fun onNext(item: Long) {
+                if (item >= second && !disposable.isDisposed) {
+                    disposable.dispose()
+                } else {
+                    println("Next: $item")
+                }
+            }
+
+            override fun onError(e: Throwable) {
+                println("Error occurred: $e")
+            }
+        }
+
+        observable.subscribe(observer)
+
+        delay(20000)
+    }
+}
