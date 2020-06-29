@@ -28,8 +28,8 @@ fun main() {
 
     println("=== Reactive Even or Odd ===")
     val subject = getSubjectWithEvenOddCheck()
-    subject.onNext(10)
-    subject.onNext(11)
+    val observable = listOf<Int>(1, 2, 3, 4, 5).toObservable()
+    observable.subscribe(subject)
 
     println("=== Fib Sequence for first 7 numbers ===")
     printFibSequence(7)
@@ -58,7 +58,10 @@ fun main() {
     data.toObservable().subscribe(observer)
 
     println("=====================================")
-    observerStopsAt(10)
+    observerStopsAt(3)
+
+    println("=== Test Hot Observable ===")
+    hotObservable()
 }
 
 fun getObservableFromList(list: List<String>) = Observable.create<String> { emitter ->
@@ -86,7 +89,7 @@ fun getObservableFromMergingLists(arrays: Array<Array<String>>): Observable<Arra
 fun getSubjectWithEvenOddCheck(): Subject<Int> {
     val subject: Subject<Int> = PublishSubject.create()
 
-    subject.map { isEven(it) }.subscribe { println("The number is ${if (it) "Even" else "Odd"}") }
+    subject.map { isEven(it) }.subscribe { println("The number $it is ${if (it) "Even" else "Odd"}") }
 
     return subject
 }
@@ -144,4 +147,21 @@ fun observerStopsAt(second: Int) {
 
         delay(20000)
     }
+}
+
+fun hotObservable() {
+    val connectableObserver = Observable
+        .interval(100, TimeUnit.MILLISECONDS)
+        .publish() // convert from cold observable to hot one
+
+    connectableObserver.subscribe { println("Observer 1: $it") }
+    connectableObserver.subscribe { println("Observer 2: $it") }
+
+    connectableObserver.connect() // starts emitting
+
+    runBlocking { delay(500) }
+
+    connectableObserver.subscribe { println("Observer 3: $it") }
+
+    runBlocking { delay(500) }
 }
